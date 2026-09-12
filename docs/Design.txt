@@ -1,0 +1,129 @@
+ I want to build a device to track speed to help me improve my dinghy sailing. It needs to be waterproof, lightweight,
+   easily readable. At the least it needs to show speed over ground - I sail in a lake so currents are nonexistent. And
+   the speed accuracy is important, I need to know changes within a second or two, as I want to see the impact of
+  trimming or boat heel angle on speed. Not that these have to be captured by the device, but the impact of these
+  changes on speed need to be reflected within a second or so. Can you build a plan for building something like that,
+  including in your analysis the cost of the hardware vs buying similar functionality.
+
+● This is a fun hardware project. Let me lay out a practical build plan with cost comparison.
+
+  ---
+  Dinghy Speed Tracker — Build Plan
+
+  Core Requirements Translation
+
+  ┌────────────────────┬──────────────────────────────────────────────────────────────────────┐
+  │        Need        │                            Technical spec                            │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────┤
+  │ Speed over ground  │ GPS Doppler velocity (more accurate than position-diff)              │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────┤
+  │ ~1 second response │ 1Hz GPS update rate (adequate — trim effects take 2–5 sec to settle) │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────┤
+  │ Waterproof         │ IP67 rated enclosure                                                 │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────┤
+  │ Sunlight readable  │ Transflective LCD or large 7-segment LED                             │
+  ├────────────────────┼──────────────────────────────────────────────────────────────────────┤
+  │ Lightweight        │ Target <200g total                                                   │
+  └────────────────────┴──────────────────────────────────────────────────────────────────────┘
+
+  ---
+  Why GPS Doppler is Accurate Enough
+
+  GPS receivers measure velocity using the Doppler shift of satellite signals, not by differentiating position. A modern
+   u-blox module reports velocity accuracy typically ±0.05 m/s (~0.1 knots). That's more than sufficient — you can
+  detect a 0.2 knot speed change reliably. At 1Hz updates this is well within your "second or two" window.
+
+  ---
+  Recommended Hardware Stack
+
+  ┌─────────────────┬──────────────────────────────────────────────────────────────────────────────────────┬─────────┐
+  │    Component    │                                         Part                                         │  Cost   │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┼─────────┤
+  │ GPS module      │ u-blox NEO-M8N breakout (GPS+GLONASS)                                                │ $15–25  │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┼─────────┤
+  │ Microcontroller │ ESP32 dev board (UART, SPI, BT for optional logging)                                 │ $5–10   │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┼─────────┤
+  │ Display         │ Option A: 2.8" transflective SPI TFT (readable in sun)                               │ $12–18  │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┼─────────┤
+  │                 │ Option B: 4-digit large 7-segment LED (TM1637, 0.56" digits) — simpler, very         │ $4–7    │
+  │                 │ readable                                                                             │         │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┼─────────┤
+  │ Battery         │ 2000 mAh LiPo (6–10 hours life)                                                      │ $8–12   │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┼─────────┤
+  │ Charger         │ TP4056 USB-C LiPo charger module                                                     │ $2–4    │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┼─────────┤
+  │ Enclosure       │ Hammond 1554B2GY ABS waterproof (IP67)                                               │ $15–22  │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┼─────────┤
+  │ Misc            │ Wire, connectors, cable gland for antenna                                            │ $5–10   │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┼─────────┤
+  │ Total           │                                                                                      │ $66–108 │
+  └─────────────────┴──────────────────────────────────────────────────────────────────────────────────────┴─────────┘
+
+  Display recommendation: Go with Option B (7-segment LED) for your first build. It's simpler to wire, far more readable
+   in direct sunlight than any small TFT, and shows speed in large glanceable digits. A TFT lets you show max speed, a
+  trend arrow, etc., but adds complexity.
+
+  ---
+  Software (Arduino IDE + ESP32)
+
+  Libraries needed:
+  - TinyGPS++ — parses NMEA sentences, extracts SOG (speed over ground) in knots/mph/kmh
+  - TM1637Display (if 7-segment) or Adafruit GFX + driver (if TFT)
+
+  Core logic is ~80 lines:
+  1. Read GPS UART at 9600 baud
+  2. Parse $GNRMC or $GPVTG sentence for SOG
+  3. Convert to knots (standard for sailing)
+  4. Display; optionally track max speed in session
+  5. Optional: log to SD card or send over BT to phone
+
+  The u-blox module can be configured via UBX protocol to run at 5Hz if you want faster updates — straightforward over
+  UART.
+
+  ---
+  Phases
+
+  Phase 1 — Breadboard prototype (~1 weekend)
+  Wire GPS + ESP32 + display on breadboard, confirm you're getting accurate speed readings outdoors.
+
+  Phase 2 — Enclosure + power (~1 weekend)
+  Mount in waterproof box, add LiPo + charger, run cable gland for external GPS antenna (optional — internal patch
+  antenna works fine through ABS plastic).
+
+  Phase 3 — Boat mounting
+  A small RAM mount arm or suction cup base. For a dinghy, a clamp to the thwart or mast base works well.
+
+  ---
+  Commercial Alternatives — Cost Comparison
+
+  ┌───────────────────────────────────┬────────┬─────────────────────────────────────────────────────────────────────┐
+  │              Product              │ Price  │                                Notes                                │
+  ├───────────────────────────────────┼────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Generic GPS speedometer (Amazon)  │ $25–50 │ Often not waterproof, poor accuracy, slow update                    │
+  ├───────────────────────────────────┼────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Velocitek SC-1                    │ ~$130  │ Sailing-specific, speed + compass, good but basic                   │
+  ├───────────────────────────────────┼────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Velocitek ProStart                │ ~$210  │ Speed, start timer, course over ground — the standard dinghy choice │
+  ├───────────────────────────────────┼────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Vakaros Atlas 2                   │ ~$300  │ Advanced: speed, heel angle, VMG — closest to "full package"        │
+  ├───────────────────────────────────┼────────┼─────────────────────────────────────────────────────────────────────┤
+  │ Garmin GPS watch (Forerunner 255) │ ~$250  │ Works but wrist-mounted, not boat-mounted                           │
+  ├───────────────────────────────────┼────────┼─────────────────────────────────────────────────────────────────────┤
+  │ B&G Triton2 display               │ $400+  │ Full instrument system, overkill for a dinghy                       │
+  └───────────────────────────────────┴────────┴─────────────────────────────────────────────────────────────────────┘
+
+  ---
+  Verdict
+
+  DIY build: ~$80 for a purpose-built, waterproof, glanceable speed display that shows knots to one decimal place.
+
+  Best commercial alternative for your use case: Velocitek ProStart at ~$210 — it's widely used in dinghy racing,
+  waterproof, and designed for exactly this. It also has a countdown timer for race starts which is useful.
+
+  The honest tradeoff: DIY saves ~$130 but costs 2–3 weekends of build time, and the commercial unit will have a
+  polished enclosure and mount. If you want to add features (heel sensor, VMG, BT data logging to a phone), the DIY
+  route becomes clearly better value. If you just want speed readout reliably, the Velocitek is probably worth the
+  premium.
+
+  ---
+  Want me to write the ESP32 firmware, or detail the wiring schematic?
