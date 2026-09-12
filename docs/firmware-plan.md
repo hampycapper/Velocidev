@@ -76,7 +76,7 @@ Things that make it robust for a full day of sailing.
 
 ## Non-goals (explicitly out of scope for now)
 
-- Heel angle measurement — Adalogger has no IMU. Would need to add an I2C accelerometer breakout.
+- Heel angle measurement + compass heading — Adalogger has no IMU. Would need to add an I2C 9-DOF breakout (see `buy-list.md`).
 - Wireless data transfer — RP2040 has no WiFi/BT. Session review happens by pulling the microSD.
 - Race start timer — could be added in Phase 5 if wanted.
 - Waypoint navigation — this is a speed instrument, not a chartplotter.
